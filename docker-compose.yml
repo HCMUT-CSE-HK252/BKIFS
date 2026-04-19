@@ -1,0 +1,43 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bkifs-backend
+    environment:
+      FAQ_DB_PATH: /app/data/faq.db
+      FAQ_CSV_PATH: /app/problem_resolution.csv
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+
+      # HTTPS router for backend.bkifs.nackerboss.io.vn
+      - "traefik.http.routers.bkifs-backend-https.rule=Host(`backend.bkifs.nackerboss.io.vn`)"
+      - "traefik.http.routers.bkifs-backend-https.entrypoints=websecure"
+      - "traefik.http.routers.bkifs-backend-https.tls=true"
+      - "traefik.http.routers.bkifs-backend-https.tls.certresolver=myresolver"
+      - "traefik.http.routers.bkifs-backend-https.service=bkifs-backend-svc"
+
+      # Optional HTTP -> HTTPS redirect on the same host
+      - "traefik.http.routers.bkifs-backend-http.rule=Host(`backend.bkifs.nackerboss.io.vn`)"
+      - "traefik.http.routers.bkifs-backend-http.entrypoints=web"
+      - "traefik.http.routers.bkifs-backend-http.middlewares=bkifs-backend-https-redirect"
+      - "traefik.http.middlewares.bkifs-backend-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.bkifs-backend-https-redirect.redirectscheme.permanent=true"
+
+      # Internal container port Traefik forwards to
+      - "traefik.http.services.bkifs-backend-svc.loadbalancer.server.port=8000"
+    volumes:
+      - bkifs_data:/app/data
+      - ./problem_resolution.csv:/app/problem_resolution.csv:ro
+    networks:
+      - default
+      - proxy
+    restart: unless-stopped
+
+volumes:
+  bkifs_data:
+
+networks:
+  proxy:
+    external: true

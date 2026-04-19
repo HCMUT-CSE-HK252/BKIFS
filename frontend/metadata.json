@@ -1,5 +1,0 @@
-{
-  "name": "ScaNN Visualizer",
-  "description": "A React frontend for a ScaNN (Scalable Nearest Neighbors) Python backend running on Google Colab, featuring semantic search and performance benchmarking.",
-  "requestFramePermissions": []
-}

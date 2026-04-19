@@ -115,3 +115,48 @@ Repository
 <a href="https://github.com/nackerboss/SCANN/graphs/contributors">
   <img src="https://camo.githubusercontent.com/f2aa1fd987013e0c261f0eda02150c9a8e62c89c00059d41825d323a61f4060e/68747470733a2f2f636f6e747269622e726f636b732f696d6167653f7265706f3d6e61636b6572626f73732f5343414e4e4e" data-canonical-src="https://contrib.rocks/image?repo=nackerboss/SCANNN" style="max-width: 100%;">
 </a>
+
+## Run with Docker
+
+This repository includes a containerized FastAPI backend setup.
+
+### 1) Build and run with Docker Compose
+
+```bash
+docker compose up --build
+```
+
+Backend API will be available at:
+
+- `http://localhost:8000/health`
+- `http://localhost:8000/docs`
+
+### 2) Stop services
+
+```bash
+docker compose down
+```
+
+If you also want to remove the persisted DB volume:
+
+```bash
+docker compose down -v
+```
+
+### 3) Run with plain docker (without compose)
+
+Build image:
+
+```bash
+docker build -t bkifs-backend .
+```
+
+Run container:
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e FAQ_DB_PATH=/app/data/faq.db \
+  -e FAQ_CSV_PATH=/app/problem_resolution.csv \
+  -v bkifs_data:/app/data \
+  bkifs-backend
+```
