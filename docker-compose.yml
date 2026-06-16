@@ -6,7 +6,7 @@ services:
     container_name: bkifs-backend
     environment:
       FAQ_DB_PATH: /app/data/faq.db
-      FAQ_CSV_PATH: /app/problem_resolution.csv
+      FAQ_CSV_PATH: /app/output.csv
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
@@ -29,7 +29,7 @@ services:
       - "traefik.http.services.bkifs-backend-svc.loadbalancer.server.port=8000"
     volumes:
       - bkifs_data:/app/data
-      - ./problem_resolution.csv:/app/problem_resolution.csv:ro
+      - ./output.csv:/app/output.csv:ro
     networks:
       - default
       - proxy

@@ -4,7 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     FAQ_DB_PATH=/app/data/faq.db \
-    FAQ_CSV_PATH=/app/problem_resolution.csv
+    FAQ_CSV_PATH=/app/output.csv
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY requirements.txt ./
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY backend.py ./
-COPY problem_resolution.csv ./
+COPY output.csv ./
 
 RUN mkdir -p /app/data
 

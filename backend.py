@@ -22,7 +22,7 @@ from sentence_transformers import SentenceTransformer
 MODEL_NAME = "all-MiniLM-L6-v2"
 K_NEIGHBORS = 1000
 DB_PATH = os.getenv("FAQ_DB_PATH", "faq.db")
-FAQ_CSV_PATH = os.getenv("FAQ_CSV_PATH", "problem_resolution.csv")
+FAQ_CSV_PATH = os.getenv("FAQ_CSV_PATH", "output.csv")
 
 # Global State
 embedding_model = None
@@ -43,7 +43,7 @@ class BenchmarkRequest(BaseModel):
 class FAQItem(BaseModel):
     question: str
     answer: str
-
+    url: str
 
 class FAQBulkUpsertRequest(BaseModel):
     items: List[FAQItem]
@@ -81,6 +81,7 @@ def initialize_db() -> None:
                 question TEXT NOT NULL,
                 answer TEXT NOT NULL,
                 embedding BLOB,
+                url TEXT,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(question, answer)
@@ -134,7 +135,7 @@ def upsert_faq_items(items: List[FAQItem]) -> None:
 def load_faq_rows() -> List[sqlite3.Row]:
     with get_db_connection() as conn:
         rows = conn.execute(
-            "SELECT id, question, answer, embedding FROM faq_items ORDER BY id"
+            "SELECT id, question, answer, embedding, url FROM faq_items ORDER BY id"
         ).fetchall()
     return rows
 
@@ -149,15 +150,15 @@ def import_problem_resolution_csv(csv_path: str, reset_existing: bool = False) -
 
     with path.open("r", encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
-        required = {"issue_description", "resolution_notes"}
+        required = {"Question", "Answer"}
         if not required.issubset(set(reader.fieldnames or [])):
             raise ValueError(
-                "CSV must include columns: issue_description,resolution_notes"
+                "CSV must include columns: Question,Answer"
             )
 
         for row in reader:
-            question = (row.get("issue_description") or "").strip()
-            answer = (row.get("resolution_notes") or "").strip()
+            question = (row.get("Question") or "").strip()
+            answer = (row.get("Answer") or "").strip()
             if not question or not answer:
                 continue
 
@@ -165,7 +166,7 @@ def import_problem_resolution_csv(csv_path: str, reset_existing: bool = False) -
             if key in seen_pairs:
                 continue
             seen_pairs.add(key)
-            parsed_items.append(FAQItem(question=question, answer=answer))
+            parsed_items.append(FAQItem(question=question, answer=answer, url = row.get("Link to resource") or ""))
 
     if not parsed_items:
         return 0
@@ -180,13 +181,13 @@ def import_problem_resolution_csv(csv_path: str, reset_existing: bool = False) -
         for item, emb in zip(parsed_items, embeddings):
             conn.execute(
                 """
-                INSERT INTO faq_items (question, answer, embedding, updated_at)
-                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+                INSERT INTO faq_items (question, answer, embedding, url, updated_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(question, answer) DO UPDATE SET
                     embedding = excluded.embedding,
                     updated_at = CURRENT_TIMESTAMP
                 """,
-                (item.question, item.answer, embedding_to_blob(emb)),
+                (item.question, item.answer, embedding_to_blob(emb),item.url)
             )
 
         conn.commit()
@@ -234,6 +235,7 @@ def rebuild_index_from_db() -> None:
             "id": int(r["id"]),
             "question": r["question"],
             "answer": r["answer"],
+            "url" : r["url"]
         }
         for r in rows
     ]
@@ -385,6 +387,7 @@ def search(query: SearchQuery):
                 "faq_id": row["id"],
                 "similarity": float(score),
                 "dataset_index": int(idx),
+                "detail": row["url"]
             }
         )
 
